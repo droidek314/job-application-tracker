@@ -35,5 +35,35 @@ class JobDatabase:
                 VALUES (?, ?, ?, 'Applied', ?)
             ''', (url, company, job_title, date_added))
         conn.commit()
-
         return cursor.lastrowid
+
+    def get_all_jobs(self):
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, company, job_title, status, date_added
+                FROM applications
+                ORDER BY id DESC
+            ''')
+            return cursor.fetchall()
+        
+    def update_status(self, job_id, new_status):
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE applications SET status = ? WHERE id == ?
+            ''', (new_status, job_id))
+            conn.commit()
+
+    def delete_job(self, job_id):
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM applications WHERE id = ?', (job_id,))
+            
+            cursor.execute('SELECT COUNT(*) FROM applications')
+            count = cursor.fetchone()[0]
+
+            if count == 0:
+                cursor.execute("DELETE FROM sqlite_sequence WHERE name='applications'")
+            
+            conn.commit()
