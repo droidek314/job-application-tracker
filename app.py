@@ -1,6 +1,9 @@
 import customtkinter as ctk
 from database import JobDatabase
 from scraper import scrape_job_details
+from gmail_scanner import GmailScanner
+import threading
+
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
@@ -36,6 +39,12 @@ class JobTrackerApp(ctk.CTk):
             self.input_frame, text="Scrape & Add Job", command=self.add_job_action
         )
         self.add_button.grid(row=0, column=2, padx=10, pady=10)
+
+        self.sync_button = ctk.CTkButton(
+            self.input_frame, text="Skanuj Gmail", fg_color="#28a745", hover_color="#218838",
+            command=self.start_gmail_scan
+        )
+        self.sync_button.grid(row=0, column=3, padx=(0,10), pady=10)
 
         self.log_box = ctk.CTkLabel(
             self,
@@ -100,7 +109,7 @@ class JobTrackerApp(ctk.CTk):
             row_frame.grid(row=index, column=0, sticky="ew", pady=5, padx=5)
             row_frame.grid_columnconfigure(1, weight=1)
 
-            info_text = f"[{date_added[:10]}]    {company} - {title}"
+            info_text = f"[{date_added[:10]}] | {job_id}    {company} -> {title}"
             info_label = ctk.CTkLabel(row_frame, text=info_text, justify="left")
             info_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
@@ -120,6 +129,23 @@ class JobTrackerApp(ctk.CTk):
             )
             delete_btn.grid(row=0, column=2, padx=10, pady=10, sticky="e")
 
+    def start_gmail_scan(self):
+        self.update_log("Connecting to Gmail service")
+        self.sync_button.configure(state="disabled")
+
+        threading.Thread(target=self.run_scanner, daemon=True).start()
+
+    def run_scanner(self):
+        try:
+            scanner = GmailScanner(self.db)
+            scanner.scan_for_updates(log_callback=self.update_log)
+
+            self.after(0, self.refresh_list)
+        except Exception as e:
+            self.update_log(f"Gmail integration error: {e}")
+        finally:
+            self.sync_button.configure(state="normal")
+    
     def update_job(self, job_id, new_status):
         self.db.update_status(job_id, new_status)
         self.update_log(f"Updated job {job_id} to {new_status}")
