@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from database import JobDatabase
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
@@ -9,6 +10,8 @@ class JobTrackerApp(ctk.CTk):
 
         self.title("Automated Job Application Tracker")
         self.geometry("600x400")
+
+        self.db = JobDatabase()
 
         self.grid_columnconfigure(0, weight=1)
 
@@ -46,7 +49,14 @@ class JobTrackerApp(ctk.CTk):
 
         self.update_log(f"Processing URL: {url}...")
         #TODO: Web scrapping logic
-        #TODO: Database insert logic
+        temp_company = "Unknown Company"
+        temp_title = "Unknown Role"
+
+        try:
+            record_id = self.db.add_job(url=url, company=temp_company, job_title=temp_title)
+            self.update_log(f"Success! Saved to database (Record ID: {record_id})")
+        except Exception as e:
+            self.update_log(f"Database Error: {e}")
 
         self.url_entry.delete(0, "end")
 
